@@ -15,7 +15,7 @@ async fn main() {
         sender_id: "".into(),
         max_price: 0.01,
     };
-    let res = s.send("hello".into(), "917559981534".into()).await;
+    let res = s.send("hello".into(), "91xxxxxx153x".into()).await;
     match res {
         Ok(r) => println!("{:?}", r),
         Err(e) => println!("{}", e),
