@@ -1,5 +1,4 @@
-mod sns;
-
+extern crate rust_aws_sns;
 #[tokio::main]
 async fn main() {
     let s = sns::SMS {
