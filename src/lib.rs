@@ -1,7 +1,7 @@
-use anyhow::Result;
 use rusoto_core::Region;
 use rusoto_sns::{MessageAttributeValue, PublishInput, PublishResponse, Sns, SnsClient};
-use std::{collections::HashMap, process};
+use std::fmt;
+use std::{collections::HashMap, env};
 pub enum SmsType {
     Promotional,
     Transactional,
@@ -33,25 +33,13 @@ impl Default for SMS {
 }
 
 impl SMS {
-    pub async fn send(&self, message: String, phone_number: String) -> Result<PublishResponse> {
-        let aws_region = std::env::var("AWS_REGION").unwrap_or_else(|_| {
-            println!(
-                "Error: AWS_REGION env variable is required. \nTIP: export AWS_REGION=us-east-1"
-            );
-            process::exit(1);
-        });
-        let _aws_key = std::env::var("AWS_SECRET_ACCESS_KEY").unwrap_or_else(|_| {
-            println!(
-                "Error: AWS_SECRET_ACCESS_KEY env variable is required. \nTIP: export AWS_SECRET_ACCESS_KEY=xxxxx"
-            );
-            process::exit(1);
-        });
-        let _aws_access = std::env::var("AWS_ACCESS_KEY_ID").unwrap_or_else(|_| {
-            println!(
-                "Error: AWS_ACCESS_KEY_ID env variable is required. \nTIP: export AWS_ACCESS_KEY_ID=xxxxx"
-            );
-            process::exit(1);
-        });
+    pub async fn send(
+        &self,
+        message: String,
+        phone_number: String,
+    ) -> anyhow::Result<PublishResponse> {
+        verify_credentials()?;
+        let aws_region = get_aws_region()?;
 
         let mut attrs: HashMap<String, MessageAttributeValue> = HashMap::new();
 
@@ -93,5 +81,62 @@ impl SMS {
 
         let client = SnsClient::new(aws_region.parse::<Region>()?);
         Ok(client.publish(params).await?)
+    }
+}
+
+#[derive(Debug)]
+pub enum Error {
+    MissingCredential(Credential),
+}
+
+#[derive(Debug)]
+pub enum Credential {
+    AwsAccessKeyId,
+    AwsSecretAccessKey,
+    AwsRegion,
+    All,
+}
+
+impl std::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Error::MissingCredential(Credential::AwsRegion) => {
+                write!(f, "AWS_REGION env var is required.")
+            }
+            Error::MissingCredential(Credential::AwsAccessKeyId) => {
+                write!(f, "AWS_ACCESS_KEY_ID env var is required.")
+            }
+            Error::MissingCredential(Credential::AwsSecretAccessKey) => {
+                write!(f, "AWS_SECRET_ACCESS_KEY env var is required.")
+            }
+            Error::MissingCredential(Credential::All) => {
+                write!(
+                    f,
+                    "AWS_SECRET_ACCESS_KEY, AWS_REGION, AWS_ACCESS_KEY_ID env var is required."
+                )
+            }
+        }
+    }
+}
+
+fn verify_credentials() -> Result<(), Error> {
+    let access_key = env::var("AWS_ACCESS_KEY_ID").ok();
+    let secret_key = env::var("AWS_SECRET_ACCESS_KEY").ok();
+
+    match (access_key, secret_key) {
+        (Some(_), Some(_)) => Ok(()),
+        (Some(_), None) => Err(Error::MissingCredential(Credential::AwsSecretAccessKey)),
+        (None, Some(_)) => Err(Error::MissingCredential(Credential::AwsAccessKeyId)),
+        (None, None) => Err(Error::MissingCredential(Credential::All)),
+    }
+}
+fn get_aws_region() -> Result<String, Error> {
+    let region = env::var("AWS_REGION").ok();
+
+    match region {
+        Some(region) => Ok(region),
+        None => Err(Error::MissingCredential(Credential::AwsRegion)),
     }
 }
