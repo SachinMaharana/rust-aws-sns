@@ -2,7 +2,6 @@ use anyhow::Result;
 use rusoto_core::Region;
 use rusoto_sns::{MessageAttributeValue, PublishInput, PublishResponse, Sns, SnsClient};
 use std::{collections::HashMap, process};
-
 pub enum SmsType {
     Promotional,
     Transactional,
