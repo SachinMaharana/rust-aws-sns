@@ -3,6 +3,9 @@ name = "rust-aws-sns"
 version = "0.1.0"
 authors = ["SachinMaharana <sachin.nicky@gmail.com>"]
 edition = "2018"
+license = "MIT"
+description = "Package sms provides a small wrapper around AWS SNS to make SMS usage more friendly."
+repository = "https://github.com/SachinMaharana/rust-aws-sns"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
