@@ -2,6 +2,10 @@
 
 crate rust-aws-sns provides a small wrapper around AWS SNS to make SMS usage more friendly.
 
+```sh
+cargo add rust-aws-sns
+```
+
 # Example Usage
 
 ```rust
