@@ -17,8 +17,8 @@ pub enum SmsType {
 impl SmsType {
     fn value(&self) -> String {
         match *self {
-            SmsType::Promotional => "Promotional".into(),
             SmsType::Transactional => "Transactional".into(),
+            SmsType::Promotional => "Promotional".into(),
         }
     }
 }
@@ -42,13 +42,18 @@ impl<'a> Default for SMS<'a> {
 }
 
 impl<'a> SMS<'a> {
+    fn get_client(&self) -> anyhow::Result<SnsClient> {
+        let aws_region = get_aws_region()?;
+        let client = SnsClient::new(aws_region.parse::<Region>()?);
+        Ok(client)
+    }
+
     // Send `message` to `number`.
     pub async fn send<'b, S>(&self, message: S, phone_number: S) -> anyhow::Result<PublishResponse>
     where
         S: Into<Cow<'b, str>>,
     {
         verify_credentials()?;
-        let aws_region = get_aws_region()?;
 
         let mut attrs: HashMap<String, MessageAttributeValue> = HashMap::new();
 
@@ -88,7 +93,7 @@ impl<'a> SMS<'a> {
             ..Default::default()
         };
 
-        let client = SnsClient::new(aws_region.parse::<Region>()?);
+        let client = self.get_client()?;
         Ok(client.publish(params).await?)
     }
 }
