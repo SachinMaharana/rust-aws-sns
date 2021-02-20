@@ -1,9 +1,16 @@
 use rusoto_core::Region;
 use rusoto_sns::{MessageAttributeValue, PublishInput, PublishResponse, Sns, SnsClient};
-use std::fmt;
+use std::{borrow::Cow, fmt};
 use std::{collections::HashMap, env};
+
+// Type of SMS delivery
 pub enum SmsType {
+    // Promotional are non-critical messages, such as marketing messages.
+    // Amazon SNS optimizes the message delivery to incur the lowest cost.
     Promotional,
+    // Transactional messages are critical messages that support
+    // customer transactions, such as one-time passcodes for multi-factor authentication.
+    // Amazon SNS optimizes the message delivery to achieve the highest reliability.
     Transactional,
 }
 
@@ -16,13 +23,15 @@ impl SmsType {
     }
 }
 
-pub struct SMS {
+// SMS configures an SNS SMS client.
+pub struct SMS<'a> {
     pub sms_type: SmsType,
-    pub sender_id: String,
+    pub sender_id: Cow<'a, str>,
     pub max_price: f64,
 }
 
-impl Default for SMS {
+// Defaults.
+impl<'a> Default for SMS<'a> {
     fn default() -> Self {
         SMS {
             sms_type: SmsType::Transactional,
@@ -32,12 +41,12 @@ impl Default for SMS {
     }
 }
 
-impl SMS {
-    pub async fn send(
-        &self,
-        message: String,
-        phone_number: String,
-    ) -> anyhow::Result<PublishResponse> {
+impl<'a> SMS<'a> {
+    // Send `message` to `number`.
+    pub async fn send<'b, S>(&self, message: S, phone_number: S) -> anyhow::Result<PublishResponse>
+    where
+        S: Into<Cow<'b, str>>,
+    {
         verify_credentials()?;
         let aws_region = get_aws_region()?;
 
@@ -48,7 +57,7 @@ impl SMS {
                 "AWS.SNS.SMS.SenderID".into(),
                 rusoto_sns::MessageAttributeValue {
                     data_type: "String".to_string(),
-                    string_value: Some(self.sender_id.clone()),
+                    string_value: Some(self.sender_id.to_string()),
                     binary_value: None,
                 },
             );
@@ -73,8 +82,8 @@ impl SMS {
         );
 
         let params = PublishInput {
-            message: message.into(),
-            phone_number: Some(phone_number.into()),
+            message: message.into().to_string(),
+            phone_number: Some(phone_number.into().to_string()),
             message_attributes: Some(attrs),
             ..Default::default()
         };
@@ -132,6 +141,7 @@ fn verify_credentials() -> Result<(), Error> {
         (None, None) => Err(Error::MissingCredential(Credential::All)),
     }
 }
+
 fn get_aws_region() -> Result<String, Error> {
     let region = env::var("AWS_REGION").ok();
 
